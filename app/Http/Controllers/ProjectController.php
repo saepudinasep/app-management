@@ -120,7 +120,7 @@ class ProjectController extends Controller
 
         if ($image) {
             if ($project->image_path) {
-                Storage::disk('public')->delete($project->image_path);
+                Storage::disk('public')->deleteDirectory(dirname($project->image_path));
             }
             $data['image_path'] = $image->store('project/' . Str::random(), 'public');
         }
@@ -136,7 +136,21 @@ class ProjectController extends Controller
     public function destroy(Project $project)
     {
         $name = $project->name;
-        $project->delete();
-        return to_route('project.index')->with('success', "Project \"$name\" was deleted");
+
+        try {
+            // Delete the image directory if it exists
+            if ($project->image_path) {
+                Storage::disk('public')->deleteDirectory(dirname($project->image_path));
+            }
+
+            // Delete the project from the database
+            $project->delete();
+
+            // Redirect to project index with success message
+            return redirect()->route('project.index')->with('success', "Project \"$name\" was deleted successfully.");
+        } catch (\Exception $e) {
+            // Handle any errors that occur during deletion
+            return redirect()->route('project.index')->with('error', "Failed to delete project \"$name\": " . $e->getMessage());
+        }
     }
 }
